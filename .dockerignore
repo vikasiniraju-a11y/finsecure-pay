@@ -1,0 +1,11 @@
+.git
+.github
+.vscode
+.idea
+*.log
+README.md
+HELP.md
+src
+.mvn
+mvnw
+mvnw.cmd
