@@ -1,0 +1,6 @@
+com\finsecure\pay\TransactionResponse.class
+com\finsecure\pay\HealthController.class
+com\finsecure\pay\FinsecurePayApplication.class
+com\finsecure\pay\TransactionRequest.class
+com\finsecure\pay\TransactionValidationService.class
+com\finsecure\pay\TransactionController.class
