@@ -13,5 +13,8 @@ EXPOSE 8080
 # Run as non-root user
 USER 10001
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD curl --fail --silent http://127.0.0.1:8080/health > /dev/null || exit 1
+
 # Start Spring Boot application
 ENTRYPOINT ["java", "-jar", "app.jar"]
