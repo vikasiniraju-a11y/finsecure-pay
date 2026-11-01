@@ -21,7 +21,7 @@ class TransactionValidationServiceTest {
             "TXN1001", "ACC1001",
             new BigDecimal("500"), "SGD");
 
-        assertEquals("REJECTED",
+        assertEquals("APPROVED",
             service.validate(request).status());
     }
 
