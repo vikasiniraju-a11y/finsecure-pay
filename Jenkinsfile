@@ -60,6 +60,7 @@ stage('Secret Detection') {
     }
 }
 
+
 stage('Configuration Security Scan') {
     steps {
         sh '''
@@ -68,9 +69,11 @@ stage('Configuration Security Scan') {
               --ignorefile .trivyignore.yaml \
               --severity LOW,MEDIUM,HIGH,CRITICAL \
               --exit-code 1 \
-              Dockerfile k8s/
+              .
         '''
     }
+}
+
 }
 
 
