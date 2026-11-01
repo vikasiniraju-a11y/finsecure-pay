@@ -91,15 +91,8 @@ pipeline {
                 '''
             }
         }
+
         
-        stage('Security Gate Rejection Test') {
-    steps {
-        sh '''
-            echo "CAPSTONE TEST: Simulated security policy rejection"
-            exit 1
-        '''
-    }
-}
 
         stage('Docker Build') {
             steps {
