@@ -28,7 +28,7 @@ spec:
 
       containers:
         - name: finsecure-pay
-          image: blk350101/finsecure-pay:3
+          image: docker.io/blk350101/finsecure-pay:3
           imagePullPolicy: IfNotPresent
 
           ports:
