@@ -53,6 +53,6 @@ public class TransactionValidationService {
         return new TransactionResponse(
                 transactionId,
                 "APPROVED",
-                "Transaction validated successfully");
+                "Transaction validated successfully - v1.1");
     }
 }
