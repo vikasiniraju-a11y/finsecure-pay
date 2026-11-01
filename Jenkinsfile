@@ -38,6 +38,42 @@ pipeline {
             }
         }
 
+        
+stage('Dependency Security Scan') {
+    steps {
+        sh '''
+            trivy fs \
+              --scanners vuln \
+              --severity HIGH,CRITICAL \
+              --exit-code 1 .
+        '''
+    }
+}
+
+stage('Secret Detection') {
+    steps {
+        sh '''
+            trivy fs \
+              --scanners secret \
+              --exit-code 1 .
+        '''
+    }
+}
+
+stage('Configuration Security Scan') {
+    steps {
+        sh '''
+            trivy config \
+              --config-data security \
+              --ignorefile .trivyignore.yaml \
+              --severity LOW,MEDIUM,HIGH,CRITICAL \
+              --exit-code 1 \
+              Dockerfile k8s/
+        '''
+    }
+}
+
+
         stage('Docker Build') {
             steps {
                 sh '''
@@ -46,6 +82,20 @@ pipeline {
                 '''
             }
         }
+
+        
+stage('Container Security Scan') {
+    steps {
+        sh '''
+            trivy image \
+              --scanners vuln \
+              --severity HIGH,CRITICAL \
+              --exit-code 1 \
+              "$IMAGE_REPO:$BUILD_NUMBER"
+        '''
+    }
+}
+
 
         stage('Docker Push') {
             steps {
