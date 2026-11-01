@@ -5,6 +5,8 @@ pipeline {
     options {
         timestamps()
         disableConcurrentBuilds()
+        skipDefaultCheckout(true)
+        buildDiscarder(logRotator(numToKeepStr: '15'))
     }
 
     environment {
@@ -26,79 +28,96 @@ pipeline {
         stage('Build and Test') {
             steps {
                 sh '''
+                    set -eu
                     chmod +x mvnw
                     ./mvnw -B clean verify
                 '''
             }
             post {
                 always {
-                    junit allowEmptyResults: true,
-                          testResults: 'target/surefire-reports/*.xml'
+                    junit(
+                        allowEmptyResults: true,
+                        testResults: 'target/surefire-reports/*.xml'
+                    )
                 }
             }
         }
 
-        
-stage('Dependency Security Scan') {
-    steps {
-        sh '''
-            trivy fs \
-              --scanners vuln \
-              --severity HIGH,CRITICAL \
-              --exit-code 1 .
-        '''
-    }
-}
+        stage('Dependency Security Scan') {
+            steps {
+                sh '''
+                    set -eu
+                    mkdir -p security-reports
 
-stage('Secret Detection') {
-    steps {
-        sh '''
-            trivy fs \
-              --scanners secret \
-              --exit-code 1 .
-        '''
-    }
-}
+                    trivy fs \
+                      --scanners vuln \
+                      --severity HIGH,CRITICAL \
+                      --ignorefile "" \
+                      --format json \
+                      --output security-reports/dependencies.json \
+                      --exit-code 1 \
+                      .
+                '''
+            }
+        }
 
+        stage('Secret Detection') {
+            steps {
+                sh '''
+                    set -eu
+                    trivy fs \
+                      --scanners secret \
+                      --ignorefile "" \
+                      --exit-code 1 \
+                      .
+                '''
+            }
+        }
 
-stage('Configuration Security Scan') {
-    steps {
-        sh '''
-            trivy config \
-              --config-data security \
-              --ignorefile .trivyignore.yaml \
-              --severity LOW,MEDIUM,HIGH,CRITICAL \
-              --exit-code 1 \
-              .
-        '''
-    }
-}
+        stage('Configuration Security Scan') {
+            steps {
+                sh '''
+                    set -eu
+                    mkdir -p security-reports
 
-}
-
+                    trivy config \
+                      --config-data security \
+                      --ignorefile .trivyignore.yaml \
+                      --severity LOW,MEDIUM,HIGH,CRITICAL \
+                      --format json \
+                      --output security-reports/configuration.json \
+                      --exit-code 1 \
+                      .
+                '''
+            }
+        }
 
         stage('Docker Build') {
             steps {
                 sh '''
+                    set -eu
                     docker build \
                       -t "$IMAGE_REPO:$BUILD_NUMBER" .
                 '''
             }
         }
 
-        
-stage('Container Security Scan') {
-    steps {
-        sh '''
-            trivy image \
-              --scanners vuln \
-              --severity HIGH,CRITICAL \
-              --exit-code 1 \
-              "$IMAGE_REPO:$BUILD_NUMBER"
-        '''
-    }
-}
+        stage('Container Security Scan') {
+            steps {
+                sh '''
+                    set -eu
+                    mkdir -p security-reports
 
+                    trivy image \
+                      --scanners vuln \
+                      --severity HIGH,CRITICAL \
+                      --format json \
+                      --output security-reports/container.json \
+                      --exit-code 1 \
+                      "$IMAGE_REPO:$BUILD_NUMBER"
+                '''
+            }
+        }
 
         stage('Docker Push') {
             steps {
@@ -110,6 +129,7 @@ stage('Container Security Scan') {
                     )
                 ]) {
                     sh '''
+                        set -eu
                         set +x
 
                         echo "$DOCKER_TOKEN" | docker login \
@@ -127,6 +147,8 @@ stage('Container Security Scan') {
         stage('Deploy to EKS') {
             steps {
                 sh '''
+                    set -eu
+
                     aws eks update-kubeconfig \
                       --region "$AWS_DEFAULT_REGION" \
                       --name "$EKS_CLUSTER" \
@@ -148,22 +170,38 @@ stage('Container Security Scan') {
         stage('Verify Deployment') {
             steps {
                 sh '''
-                    kubectl get deployment \
-                      finsecure-pay -n "$K8S_NAMESPACE"
+                    set -eu
 
-                    kubectl get pods -n "$K8S_NAMESPACE"
+                    kubectl get deployment \
+                      finsecure-pay \
+                      -n "$K8S_NAMESPACE"
+
+                    kubectl get pods \
+                      -n "$K8S_NAMESPACE"
+
+                    kubectl get deployment \
+                      finsecure-pay \
+                      -n "$K8S_NAMESPACE" \
+                      -o jsonpath='{.spec.template.spec.containers[0].image}{"\\n"}'
                 '''
             }
         }
     }
 
     post {
+        always {
+            archiveArtifacts(
+                artifacts: 'security-reports/*.json',
+                allowEmptyArchive: true
+            )
+        }
+
         success {
-            echo 'FinSecure Pay CI/CD pipeline completed successfully.'
+            echo 'SUCCESS: FinSecure Pay DevSecOps pipeline completed.'
         }
 
         failure {
-            echo 'Pipeline failed. Check console output.'
+            echo 'FAILURE: Check build, security scans, or deployment logs.'
         }
     }
 }
