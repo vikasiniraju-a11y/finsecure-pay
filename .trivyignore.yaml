@@ -1,0 +1,10 @@
+
+misconfigurations:
+  - id: KSV-01010
+    paths:
+      - "**/configmap.yaml"
+    statement: >
+      False positive reviewed for the FinSecure Pay capstone.
+      The ConfigMap contains only APP_ENV=capstone and
+      LOG_LEVEL=INFO. Neither value is a credential.
+      Reassess this exception if the ConfigMap contents change.
